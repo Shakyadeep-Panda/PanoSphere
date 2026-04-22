@@ -6,10 +6,9 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
-app.config['UPLOAD_FOLDER'] = os.path.join('/var/data', 'uploads')
+app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
-app.config['TOURS_FOLDER'] = os.path.join('/var/data', 'tours')
-
+app.config['TOURS_FOLDER']  = os.path.join(BASE_DIR, 'tours')
 ALLOWED = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 
 
