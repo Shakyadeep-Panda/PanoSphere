@@ -233,7 +233,7 @@ app.config['TOURS_FOLDER'] = os.path.join('/var/data', 'tours')
 
 | Name | Role |
 |---|---|
-| Sohan | Full Stack Developer |
+| Shakyadeep Panda | Aspiring Full Stack Developer |
 
 
 ---
