@@ -1,10 +1,16 @@
 import os
 import json
 import uuid
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+cloudinary.config(
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key    = os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+)
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
@@ -145,8 +151,6 @@ def delete_tour_api(tour_name):
 
 @app.route('/api/upload/<tour_name>', methods=['POST'])
 def upload(tour_name):
-    ensure_dirs()
-
     if 'files' not in request.files:
         return jsonify({'error': 'No files'}), 400
 
@@ -156,18 +160,23 @@ def upload(tour_name):
 
     for file in files:
         if file and file.filename and allowed(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
             node_id = str(uuid.uuid4())[:8]
-            filename = f"{node_id}.{ext}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-            file.save(filepath)
+            # Upload directly to Cloudinary
+            result = cloudinary.uploader.upload(
+                file,
+                public_id   = f"panosphere/{tour_name}/{node_id}",
+                resource_type = "image",
+                overwrite   = True
+            )
+
+            image_url = result['secure_url']
 
             node = {
-                'id': node_id,
-                'name': os.path.splitext(file.filename)[0],
-                'filename': filename,
-                'links': []
+                'id'       : node_id,
+                'name'     : os.path.splitext(file.filename)[0],
+                'filename' : image_url,   # store full URL instead of filename
+                'links'    : []
             }
 
             tour['nodes'][node_id] = node
@@ -200,7 +209,13 @@ def delete_node(tour_name, node_id):
 
     if node_id in tour['nodes']:
         fname = tour['nodes'][node_id].get('filename')
-        if fname:
+
+        # Delete from Cloudinary if it's a cloudinary URL
+        if fname and 'cloudinary.com' in fname:
+            public_id = f"panosphere/{tour_name}/{node_id}"
+            cloudinary.uploader.destroy(public_id)
+        # Delete from local disk (fallback for old uploads)
+        elif fname:
             fp = os.path.join(app.config['UPLOAD_FOLDER'], fname)
             if os.path.exists(fp):
                 os.remove(fp)
@@ -217,7 +232,6 @@ def delete_node(tour_name, node_id):
         save_tour(tour, tour_name)
 
     return jsonify({'ok': True})
-
 
 @app.route('/api/matrix/<tour_name>', methods=['POST'])
 def save_matrix(tour_name):
@@ -265,10 +279,10 @@ def save_matrix(tour_name):
     return jsonify({'ok': True, 'tour': tour})
 
 
-@app.route('/uploads/<filename>')
+@app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+    # If it's already a full URL stored in old local format, redirect
+    return '', 404
 
 # -----------------------------
 # Start
