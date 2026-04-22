@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PanoSphere — 360° Virtual Tour Studio</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin@5/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin@5/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/compass-plugin@5/index.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=JetBrains+Mono:wght@300;400&display=swap">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080a0f;--surface:#0f1218;--s2:#161b24;--s3:#1d2330;
+  --border:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.12);
+  --accent:#00d4ff;--a2:#ff6b35;--a3:#7fff6b;
+  --text:#e8eaf0;--t2:#8892a4;--t3:#4a5568;
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:8px;--r2:12px;--tr:0.18s cubic-bezier(0.4,0,0.2,1);
+}
+html,body{
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  overflow:hidden;
+  overscroll-behavior:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#app{display:grid;grid-template-columns:60px 300px 1fr;height:100dvh;min-height:100vh}
+
+/* Nav */
+#nav{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;z-index:20}
+#nav-logo{font-size:10px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:0.1em;writing-mode:vertical-rl;transform:rotate(180deg);margin-bottom:12px;padding:8px 0}
+.nb{width:44px;height:44px;border-radius:var(--r);border:1px solid transparent;background:transparent;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;transition:all var(--tr)}
+.nb:hover{background:var(--s2);border-color:var(--b2);color:var(--text)}
+.nb.active{background:var(--s3);border-color:var(--accent);color:var(--accent)}
+.nb svg{width:18px;height:18px;flex-shrink:0}
+.nb span{font-size:8px;font-family:var(--mono);letter-spacing:0.05em;text-transform:uppercase}
+.nav-sep{width:32px;height:1px;background:var(--border);margin:4px 0}
+
+/* Panel */
+#panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.tab{display:none;flex-direction:column;flex:1;overflow:hidden}
+.tab.show{display:flex}
+.ptitle{padding:14px 16px 10px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--border);font-family:var(--mono);flex-shrink:0}
+
+/* Upload */
+#dropzone{margin:12px;border:1.5px dashed var(--b2);border-radius:var(--r2);padding:24px 16px;text-align:center;cursor:pointer;transition:all var(--tr);flex-shrink:0}
+#dropzone:hover,#dropzone.drag{border-color:var(--accent);background:rgba(0,212,255,0.04)}
+#dropzone svg{width:26px;height:26px;color:var(--t3);margin:0 auto 8px;display:block}
+#dropzone p{font-size:12px;color:var(--t2);line-height:1.6}
+#dropzone small{font-size:10px;color:var(--t3);font-family:var(--mono)}
+#file-input{display:none}
+#prog-wrap{margin:0 12px 8px;display:none;flex-shrink:0}
+#prog-bar{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+#prog-fill{height:100%;background:var(--accent);width:0;transition:width 0.3s}
+#pano-list{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
+.pi{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer;transition:background var(--tr);border:1px solid transparent;margin-bottom:4px}
+.pi:hover{background:var(--s2)}
+.pi.active{background:var(--s3);border-color:var(--accent)}
+.pi-thumb{width:52px;height:30px;border-radius:5px;object-fit:cover;background:var(--s3);flex-shrink:0}
+.pi-info{flex:1;min-width:0}
+.pi-name-inp{background:transparent;border:none;border-bottom:1px solid var(--b2);color:var(--text);font-size:12px;font-family:var(--font);font-weight:500;width:100%;outline:none;padding:1px 0}
+.pi-name-inp:focus{border-bottom-color:var(--accent)}
+.pi-meta{font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:2px}
+.pi-del{width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;transition:all var(--tr);flex-shrink:0}
+.pi-del:hover{background:rgba(255,80,80,0.15);color:#ff5050}
+
+/* Matrix */
+#matrix-tab-inner{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.mat-hint{font-size:11px;color:var(--t3);font-family:var(--mono);line-height:1.6;padding:8px 10px;background:var(--s2);border-radius:var(--r);border:1px solid var(--border)}
+.mat-ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mat-ctrls label{font-size:11px;color:var(--t2);font-family:var(--mono)}
+.mat-ctrls input[type=number]{width:48px;background:var(--s2);border:1px solid var(--b2);color:var(--text);border-radius:5px;padding:4px 6px;font-size:12px;font-family:var(--mono);outline:none}
+#mat-grid-wrap{overflow:auto}
+#mat-grid{display:inline-grid;gap:4px;padding:4px}
+.mc{width:68px;height:52px;border-radius:6px;border:1.5px dashed var(--b2);background:var(--s2);cursor:pointer;transition:all var(--tr);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.mc:hover{border-color:var(--accent);background:var(--s3)}
+.mc.filled{border-style:solid;border-color:var(--b2)}
+.mc.filled:hover{border-color:var(--a2)}
+.mc.sel{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent)}
+.mc.dragover{border-color:var(--a3)!important;background:rgba(127,255,107,0.06)!important}
+.mc img{width:100%;height:100%;object-fit:cover}
+.mc .cn{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);font-size:8px;font-family:var(--mono);padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.mc .cc{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:3px;background:rgba(255,80,80,0.85);border:none;color:#fff;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1}
+.mc:hover .cc{display:flex}
+.mc .cp{font-size:20px;color:var(--t3)}
+
+/* Links */
+#links-inner{flex:1;overflow-y:auto;padding:12px}
+.li{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
+.li-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.li-target{font-size:12px;font-weight:500;color:var(--accent)}
+.li-del{background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:16px;line-height:1}
+.li-del:hover{color:#ff5050}
+.li-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.li-row label{font-size:10px;color:var(--t3);font-family:var(--mono);min-width:44px}
+.li-row input,.li-row select{flex:1;background:var(--s3);border:1px solid var(--b2);color:var(--text);border-radius:5px;padding:4px 8px;font-size:11px;font-family:var(--mono);outline:none}
+.li-row input:focus,.li-row select:focus{border-color:var(--accent)}
+.ab{font-size:9px;background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);border-radius:3px;padding:1px 5px;font-family:var(--mono)}
+#btn-add-link{width:100%;padding:8px;background:var(--s2);border:1.5px dashed var(--b2);color:var(--t3);border-radius:var(--r);cursor:pointer;font-size:12px;font-family:var(--font);transition:all var(--tr);margin-top:4px}
+#btn-add-link:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Viewer */
+#viewer-wrap{position:relative;background:#000;overflow:hidden;display:flex;flex-direction:column}
+#viewer-topbar{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 16px;
+  gap:10px;
+  min-height:52px;
+  flex-shrink:0;
+  flex-wrap:wrap;
+}
+#vt-logo{font-size:14px;font-weight:700;color:var(--accent)}
+#vt-name{font-size:12px;color:var(--t2);font-family:var(--mono);flex:1;min-width:120px}
+#vt-count{font-size:11px;color:var(--t3);font-family:var(--mono)}
+#viewer{flex:1;min-height:0}
+#no-viewer{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--t3)}
+#no-viewer svg{width:44px;height:44px;opacity:0.25}
+#no-viewer p{font-size:13px;font-family:var(--mono)}
+
+/* Buttons */
+.btn{padding:6px 13px;border-radius:var(--r);border:1px solid var(--b2);background:var(--s2);color:var(--text);font-size:11px;font-family:var(--font);cursor:pointer;transition:all var(--tr);white-space:nowrap}
+.btn:hover{background:var(--s3)}
+.btn-a{border-color:var(--accent);color:var(--accent)}
+.btn-a:hover{background:rgba(0,212,255,0.08)}
+.btn-b{border-color:var(--a2);color:var(--a2)}
+.btn-b:hover{background:rgba(255,107,53,0.08)}
+select.btn{appearance:none}
+
+/* Toast */
+#toast{position:absolute;bottom:16px;right:16px;padding:9px 15px;background:var(--s3);border:1px solid var(--b2);border-radius:var(--r);font-size:12px;font-family:var(--mono);z-index:200;opacity:0;transition:opacity 0.25s;pointer-events:none;max-width:calc(100vw - 32px)}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--a3);color:var(--a3)}
+#toast.err{border-color:#ff5050;color:#ff5050}
+#toast.info{border-color:var(--accent);color:var(--accent)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.psv-container{font-family:var(--font)!important}
+
+/* Mobile */
+@media (max-width: 900px){
+  #app{grid-template-columns:56px 1fr}
+  #panel{position:relative;z-index:15}
+  #viewer-wrap{grid-column:2}
+}
+@media (max-width: 700px){
+  #app{
+    grid-template-columns:1fr;
+    grid-template-rows:56px 42vh 1fr;
+  }
+  #nav{
+    flex-direction:row;
+    justify-content:center;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    padding:6px;
+  }
+  #nav-logo{display:none}
+  .nav-sep{display:none}
+  #panel{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    min-height:0;
+  }
+  #viewer-wrap{
+    min-height:0;
+  }
+  #viewer-topbar{
+    padding:8px 10px;
+    gap:8px;
+  }
+  #tour-select{max-width:140px!important}
+  #vt-name{
+    flex-basis:100%;
+    order:10;
+  }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Side Nav ── -->
+  <nav id="nav">
+    <div id="nav-logo">PSV</div>
+    <button class="nb active" data-tab="upload">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+      <span>Panos</span>
+    </button>
+    <button class="nb" data-tab="matrix">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Matrix</span>
+    </button>
+    <button class="nb" data-tab="links">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span>Links</span>
+    </button>
+    <div class="nav-sep"></div>
+    <button class="nb" id="btn-play">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>Tour</span>
+    </button>
+    <button class="nb" id="btn-save" title="Save tour">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <span>Save</span>
+    </button>
+  </nav>
+
+  <!-- ── Left Panel ── -->
+  <div id="panel">
+
+    <!-- Upload tab -->
+    <div class="tab show" id="tab-upload">
+      <div class="ptitle">Panorama Library</div>
+      <div id="dropzone">
+        <input type="file" id="file-input" multiple accept="image/*">
+        <svg fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Drop 360° panoramas here<br>or click to browse</p>
+        <small>JPG · PNG · WEBP · up to 200MB</small>
+      </div>
+      <div id="prog-wrap"><div id="prog-bar"><div id="prog-fill"></div></div></div>
+      <div id="pano-list"></div>
+    </div>
+
+    <!-- Matrix tab -->
+    <div class="tab" id="tab-matrix">
+      <div class="ptitle">Matrix Room Planner</div>
+      <div id="matrix-tab-inner">
+        <div class="mat-hint">Drag panoramas onto cells, or click a cell then click a panorama. Hit <strong>Save Links</strong> to auto-generate N/S/E/W navigation arrows.</div>
+        <div class="mat-ctrls">
+          <label>Rows</label><input type="number" id="mat-rows" min="1" max="10" value="3">
+          <label>Cols</label><input type="number" id="mat-cols" min="1" max="10" value="3">
+          <button class="btn btn-a" id="btn-apply-mat">Apply</button>
+          <button class="btn btn-b" id="btn-save-mat">Save Links</button>
+        </div>
+        <div id="mat-grid-wrap"><div id="mat-grid"></div></div>
+      </div>
+    </div>
+
+    <!-- Links tab -->
+    <div class="tab" id="tab-links">
+      <div class="ptitle">Links — <span id="links-node-name" style="color:var(--accent)">select a panorama</span></div>
+      <div id="links-inner">
+        <div id="links-list"></div>
+        <button id="btn-add-link">+ Add manual link</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Viewer ── -->
+  <div id="viewer-wrap">
+    <div id="viewer-topbar">
+      <span id="vt-logo">PanoSphere</span>
+
+      <select id="tour-select" class="btn" style="max-width:180px;">
+        <option value="default">default</option>
+      </select>
+
+      <button class="btn btn-a" id="btn-new-tour">New Tour</button>
+      <button class="btn btn-b" id="btn-delete-tour">Delete Tour</button>
+
+      <span id="vt-name">No panorama loaded</span>
+      <span id="vt-count"></span>
+    </div>
+
+    <div id="no-viewer">
+      <svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+      <p>Upload panoramas and click one to preview</p>
+    </div>
+    <div id="viewer" style="display:none;height:100%"></div>
+    <div id="toast"></div>
+  </div>
+
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.161/build/three.module.min.js",
+    "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5/index.module.min.js",
+    "@photo-sphere-viewer/markers-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5/index.module.min.js",
+    "@photo-sphere-viewer/virtual-tour-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/virtual-tour-plugin@5/index.module.min.js",
+    "@photo-sphere-viewer/gallery-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin@5/index.module.min.js",
+    "@photo-sphere-viewer/compass-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/compass-plugin@5/index.module.min.js",
+    "@photo-sphere-viewer/autorotate-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/autorotate-plugin@5/index.module.min.js"
+  }
+}
+</script>
+
+<script type="module">
+import { Viewer } from '@photo-sphere-viewer/core';
+import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin';
+import { VirtualTourPlugin } from '@photo-sphere-viewer/virtual-tour-plugin';
+import { GalleryPlugin } from '@photo-sphere-viewer/gallery-plugin';
+import { CompassPlugin } from '@photo-sphere-viewer/compass-plugin';
+import { AutorotatePlugin } from '@photo-sphere-viewer/autorotate-plugin';
+
+// ── State ──
+let currentTour = 'default';
+let tour = { nodes: {}, matrix: {}, name: 'default' };
+let viewer = null;
+let tourPlugin = null;
+let currentId = null;
+let matrixData = {};
+let pendingCell = null;
+
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, type='ok'){
+  const t=$('toast'); 
+  t.textContent=msg; 
+  t.className='show '+type;
+  clearTimeout(t._tid); 
+  t._tid=setTimeout(()=>t.className='',2500);
+}
+function imgUrl(filename){ return '/uploads/' + filename; }
+
+// ── Tour Management ──
+async function loadTourList() {
+  const res = await fetch('/api/tours');
+  const data = await res.json();
+  const select = $('tour-select');
+  select.innerHTML = '';
+
+  const tours = data.tours?.length ? data.tours : ['default'];
+
+  tours.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === currentTour) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  if (!tours.includes(currentTour)) {
+    currentTour = 'default';
+  }
+}
+
+async function switchTour(name) {
+  currentTour = name || 'default';
+  currentId = null;
+  pendingCell = null;
+  destroyViewer();
+
+  const res = await fetch(`/api/tour/${encodeURIComponent(currentTour)}`);
+  tour = await res.json();
+
+  if(!tour.nodes) tour.nodes = {};
+  if(!tour.matrix) tour.matrix = {};
+  if(!tour.name) tour.name = currentTour;
+
+  matrixData = Object.assign({}, tour.matrix);
+
+  renderPanoList();
+  renderMatrix();
+  renderLinks();
+  updateCount();
+  $('vt-name').textContent = 'No panorama loaded';
+  $('tour-select').value = currentTour;
+}
+
+async function init(){
+  await loadTourList();
+  await switchTour(currentTour);
+}
+
+function updateCount(){
+  const n = Object.keys(tour.nodes).length;
+  $('vt-count').textContent = n + ' panorama' + (n!==1?'s':'');
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.nb[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nb[data-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => { t.classList.remove('show'); t.style.display='none'; });
+    btn.classList.add('active');
+    const tab = document.getElementById('tab-' + btn.dataset.tab);
+    tab.style.display = 'flex';
+    tab.classList.add('show');
+    if (btn.dataset.tab === 'links') renderLinks();
+    if (btn.dataset.tab === 'matrix') renderMatrix();
+  });
+});
+document.querySelectorAll('.tab').forEach(t => { if(!t.classList.contains('show')) t.style.display='none'; });
+
+// ── Upload ──
+const dropzone = $('dropzone');
+const fileInput = $('file-input');
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); doUpload(e.dataTransfer.files); });
+fileInput.addEventListener('change', () => doUpload(fileInput.files));
+
+async function doUpload(files){
+  if(!files.length) return;
+  const pw=$('prog-wrap'), pf=$('prog-fill');
+  pw.style.display='block'; pf.style.width='10%';
+
+  const fd = new FormData();
+  for(const f of files) fd.append('files', f);
+
+  try{
+    const res = await fetch(`/api/upload/${encodeURIComponent(currentTour)}`,{
+      method:'POST',
+      body:fd
+    });
+
+    pf.style.width='80%';
+    const data = await res.json();
+
+    if(data.error){
+      toast(data.error,'err');
+      pw.style.display='none';
+      return;
+    }
+
+    (data.uploaded || []).forEach(n => { tour.nodes[n.id]=n; });
+
+    pf.style.width='100%';
+    setTimeout(()=>{ pw.style.display='none'; pf.style.width='0'; },500);
+
+    renderPanoList();
+    updateCount();
+    toast(`Uploaded ${(data.uploaded || []).length} panorama(s)`);
+    fileInput.value = '';
+  }catch(e){
+    console.error(e);
+    toast('Upload failed — check Flask console','err');
+    pw.style.display='none';
+  }
+}
+
+// ── Pano List ──
+function renderPanoList(){
+  const list = $('pano-list');
+  list.innerHTML='';
+
+  Object.values(tour.nodes).forEach(node => {
+    const div = document.createElement('div');
+    div.className = 'pi' + (currentId===node.id?' active':'');
+    div.dataset.id = node.id;
+    div.draggable = true;
+
+    div.innerHTML = `
+      <img class="pi-thumb" src="${imgUrl(node.filename)}" loading="lazy" onerror="this.style.background='#1d2330'">
+      <div class="pi-info">
+        <input class="pi-name-inp" value="${esc(node.name)}" data-id="${node.id}">
+        <div class="pi-meta">${node.id} · ${(node.links||[]).length} link(s)</div>
+      </div>
+      <button class="pi-del" data-id="${node.id}">×</button>
+    `;
+
+    div.addEventListener('click', e => {
+      if(e.target.classList.contains('pi-del') || e.target.classList.contains('pi-name-inp')) return;
+
+      if(pendingCell !== null){
+        placeInCell(pendingCell, node.id);
+        pendingCell = null;
+        document.querySelectorAll('.mc').forEach(c=>c.classList.remove('sel'));
+        toast(`Placed "${node.name}"`);
+        document.querySelector('.nb[data-tab="matrix"]').click();
+        return;
+      }
+
+      loadViewer(node.id);
+    });
+
+    div.querySelector('.pi-name-inp').addEventListener('change', async e => {
+      node.name = e.target.value.trim() || node.name;
+      await fetch(`/api/nodes/${encodeURIComponent(currentTour)}/${node.id}`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:node.name})
+      });
+      renderPanoList();
+      renderMatrix();
+      renderLinks();
+    });
+
+    div.querySelector('.pi-del').addEventListener('click', async () => {
+      if(!confirm(`Delete "${node.name}"?`)) return;
+
+      await fetch(`/api/nodes/${encodeURIComponent(currentTour)}/${node.id}`,{
+        method:'DELETE'
+      });
+
+      delete tour.nodes[node.id];
+      Object.keys(matrixData).forEach(k => { if(matrixData[k] === node.id) delete matrixData[k]; });
+      tour.matrix = Object.assign({}, matrixData);
+
+      if(currentId===node.id){
+        currentId=null;
+        destroyViewer();
+      }
+
+      renderPanoList();
+      renderMatrix();
+      renderLinks();
+      updateCount();
+      toast('Deleted');
+    });
+
+    div.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('nodeid', node.id);
+      div.style.opacity='0.4';
+    });
+
+    div.addEventListener('dragend', () => div.style.opacity='1');
+    list.appendChild(div);
+  });
+}
+
+// ── Viewer ──
+async function loadViewer(nodeId){
+  const node = tour.nodes[nodeId];
+  if(!node) return;
+
+  currentId = nodeId;
+  $('vt-name').textContent = node.name;
+  document.querySelectorAll('.pi').forEach(el => el.classList.toggle('active', el.dataset.id===nodeId));
+
+  if(viewer && tourPlugin){
+    try{
+      tourPlugin.setCurrentNode(nodeId);
+      return;
+    }catch(e){}
+  }
+
+  const psvNodes = Object.values(tour.nodes).map(n => ({
+    id: n.id,
+    panorama: imgUrl(n.filename),
+    name: n.name,
+    links: (n.links||[]).map(l => ({
+      nodeId: l.nodeId,
+      position: l.position || {yaw:'0deg',pitch:'-10deg'},
+      name: tour.nodes[l.nodeId]?.name || l.nodeId
+    })).filter(l => tour.nodes[l.nodeId])
+  }));
+
+  $('no-viewer').style.display='none';
+  const vEl = $('viewer');
+  vEl.style.display='block';
+  vEl.innerHTML='';
+
+  if(viewer){
+    try{ viewer.destroy(); }catch(e){}
+    viewer=null;
+    tourPlugin=null;
+  }
+
+  viewer = new Viewer({
+    container: vEl,
+    panorama: imgUrl(node.filename),
+    defaultYaw: 0,
+    defaultPitch: -5,
+    defaultZoomLvl: 50,
+    navbar: ['autorotate','zoom','move','caption','fullscreen'],
+    plugins: [
+      MarkersPlugin,
+      CompassPlugin,
+      AutorotatePlugin,
+      [GalleryPlugin, {
+        items: psvNodes.map(n=>({id:n.id, name:n.name, panorama:n.panorama})),
+        visibleOnLoad: false
+      }],
+      [VirtualTourPlugin, {
+        positionMode: 'manual',
+        renderMode: '3d',
+        nodes: psvNodes,
+        startNodeId: nodeId
+      }]
+    ]
+  });
+
+  tourPlugin = viewer.getPlugin(VirtualTourPlugin);
+
+  tourPlugin.addEventListener('node-changed', ({node:n}) => {
+    currentId = n.id;
+    const found = tour.nodes[n.id];
+    if(found){
+      $('vt-name').textContent = found.name;
+      document.querySelectorAll('.pi').forEach(el => el.classList.toggle('active', el.dataset.id===n.id));
+      if(document.getElementById('tab-links').classList.contains('show')) renderLinks();
+    }
+  });
+}
+
+function destroyViewer(){
+  if(viewer){
+    try{viewer.destroy();}catch(e){}
+    viewer=null;
+    tourPlugin=null;
+  }
+  $('viewer').style.display='none';
+  $('viewer').innerHTML='';
+  $('no-viewer').style.display='flex';
+  $('vt-name').textContent='No panorama loaded';
+}
+
+// ── Tour / Save buttons ──
+$('btn-play').addEventListener('click', () => {
+  const first = Object.keys(tour.nodes)[0];
+  if(!first){
+    toast('Upload panoramas first','err');
+    return;
+  }
+  loadViewer(first);
+});
+
+$('btn-save').addEventListener('click', async () => {
+  tour.matrix = Object.assign({}, matrixData);
+
+  await fetch(`/api/tour/${encodeURIComponent(currentTour)}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(tour)
+  });
+
+  toast(`Tour "${currentTour}" saved`);
+});
+
+// ── Matrix ──
+function renderMatrix(){
+  const rows = parseInt($('mat-rows').value)||3;
+  const cols = parseInt($('mat-cols').value)||3;
+  const grid = $('mat-grid');
+  grid.style.gridTemplateColumns = `repeat(${cols}, 68px)`;
+  grid.innerHTML='';
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const key=`${r},${c}`;
+      const nid = matrixData[key]||null;
+      const node = nid ? tour.nodes[nid] : null;
+      const cell = document.createElement('div');
+      cell.className='mc'+(node?' filled':'');
+      cell.dataset.key=key;
+
+      if(node){
+        cell.innerHTML=`<img src="${imgUrl(node.filename)}" loading="lazy"><span class="cn">${esc(node.name)}</span><button class="cc">×</button>`;
+        cell.querySelector('.cc').addEventListener('click', e => {
+          e.stopPropagation();
+          delete matrixData[key];
+          delete tour.matrix[key];
+          renderMatrix();
+        });
+        cell.addEventListener('click', () => loadViewer(nid));
+      } else {
+        cell.innerHTML=`<span class="cp">+</span>`;
+        cell.addEventListener('click', () => {
+          pendingCell=key;
+          document.querySelectorAll('.mc').forEach(c=>c.classList.remove('sel'));
+          cell.classList.add('sel');
+          toast('Click a panorama from the library to place it here','info');
+          document.querySelector('.nb[data-tab="upload"]').click();
+        });
+      }
+
+      cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('dragover'); });
+      cell.addEventListener('dragleave', () => cell.classList.remove('dragover'));
+      cell.addEventListener('drop', e => {
+        e.preventDefault();
+        cell.classList.remove('dragover');
+        const nid2 = e.dataTransfer.getData('nodeid');
+        if(nid2 && tour.nodes[nid2]) placeInCell(key, nid2);
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function placeInCell(key, nodeId){
+  matrixData[key]=nodeId;
+  tour.matrix[key]=nodeId;
+  renderMatrix();
+}
+
+$('btn-apply-mat').addEventListener('click', renderMatrix);
+$('mat-rows').addEventListener('change', renderMatrix);
+$('mat-cols').addEventListener('change', renderMatrix);
+
+$('btn-save-mat').addEventListener('click', async () => {
+  const res = await fetch(`/api/matrix/${encodeURIComponent(currentTour)}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({matrix:matrixData})
+  });
+
+  const data = await res.json();
+  tour = data.tour || tour;
+  matrixData = Object.assign({}, tour.matrix || {});
+  renderPanoList();
+  renderMatrix();
+  toast('Links generated from matrix!');
+
+  if(viewer && currentId){
+    viewer.destroy();
+    viewer=null;
+    tourPlugin=null;
+    loadViewer(currentId);
+  }
+});
+
+// ── Links Editor ──
+function renderLinks(){
+  const node = currentId ? tour.nodes[currentId] : null;
+  $('links-node-name').textContent = node ? node.name : 'select a panorama first';
+  const list=$('links-list');
+  list.innerHTML='';
+  if(!node) return;
+
+  (node.links||[]).forEach((link,i) => {
+    const target=tour.nodes[link.nodeId];
+    const div=document.createElement('div');
+    div.className='li';
+
+    div.innerHTML=`
+      <div class="li-head">
+        <span class="li-target">${esc(target?target.name:link.nodeId)}</span>
+        ${link.auto?'<span class="ab">auto</span>':''}
+        <button class="li-del" data-i="${i}">×</button>
+      </div>
+      <div class="li-row"><label>Target</label>
+        <select data-i="${i}" data-f="nodeId">
+          ${Object.values(tour.nodes).filter(n=>n.id!==currentId).map(n=>`<option value="${n.id}"${n.id===link.nodeId?' selected':''}>${esc(n.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="li-row"><label>Yaw</label><input type="text" value="${link.position?.yaw||'0deg'}" data-i="${i}" data-f="yaw" placeholder="e.g. 90deg"></div>
+      <div class="li-row"><label>Pitch</label><input type="text" value="${link.position?.pitch||'-10deg'}" data-i="${i}" data-f="pitch" placeholder="e.g. -10deg"></div>
+    `;
+
+    div.querySelector('.li-del').addEventListener('click',()=>{
+      node.links.splice(i,1);
+      saveLinks(node);
+    });
+
+    div.querySelector('select').addEventListener('change',e=>{
+      node.links[i].nodeId=e.target.value;
+      node.links[i].auto=false;
+      saveLinks(node);
+    });
+
+    div.querySelectorAll('input[data-f]').forEach(inp=>inp.addEventListener('change',e=>{
+      if(!node.links[i].position) node.links[i].position={};
+      node.links[i].position[e.target.dataset.f]=e.target.value;
+      node.links[i].auto=false;
+      saveLinks(node);
+    }));
+
+    list.appendChild(div);
+  });
+}
+
+async function saveLinks(node){
+  await fetch(`/api/nodes/${encodeURIComponent(currentTour)}/${node.id}`,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({links:node.links})
+  });
+
+  renderLinks();
+  renderPanoList();
+  toast('Links saved');
+}
+
+$('btn-add-link').addEventListener('click',()=>{
+  const node=currentId?tour.nodes[currentId]:null;
+  if(!node){
+    toast('Select a panorama first','err');
+    return;
+  }
+
+  const others=Object.values(tour.nodes).filter(n=>n.id!==currentId);
+  if(!others.length){
+    toast('Need at least 2 panoramas','err');
+    return;
+  }
+
+  if(!node.links) node.links=[];
+  node.links.push({
+    nodeId:others[0].id,
+    position:{yaw:'0deg',pitch:'-10deg'},
+    name:others[0].name
+  });
+
+  saveLinks(node);
+});
+
+// ── Tour selector buttons ──
+$('tour-select').addEventListener('change', async (e) => {
+  await switchTour(e.target.value);
+  toast(`Loaded tour: ${e.target.value}`);
+});
+
+$('btn-new-tour').addEventListener('click', async () => {
+  const name = prompt('Enter new tour name:');
+  if (!name || !name.trim()) return;
+
+  currentTour = name.trim();
+
+  await fetch(`/api/tour/${encodeURIComponent(currentTour)}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ nodes: {}, matrix: {}, name: currentTour })
+  });
+
+  await loadTourList();
+  await switchTour(currentTour);
+  $('tour-select').value = currentTour;
+  toast(`Created new tour: ${currentTour}`);
+});
+
+$('btn-delete-tour').addEventListener('click', async () => {
+  if (currentTour === 'default') {
+    toast('Default tour cannot be deleted', 'err');
+    return;
+  }
+
+  if (!confirm(`Delete tour "${currentTour}"?`)) return;
+
+  await fetch(`/api/tour/${encodeURIComponent(currentTour)}`, { method: 'DELETE' });
+
+  currentTour = 'default';
+  await loadTourList();
+  await switchTour(currentTour);
+  $('tour-select').value = currentTour;
+  toast('Tour deleted');
+});
+
+init();
+</script>
+</body>
+</html>
