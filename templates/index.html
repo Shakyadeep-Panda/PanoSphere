@@ -187,6 +187,74 @@ select.btn{appearance:none}
     order:10;
   }
 }
+  /* ── Mobile fix patch ── */
+@media (max-width: 700px) {
+
+  /* Full viewport, no overflow */
+  html, body { overflow: hidden; height: 100%; }
+
+  #app {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 48px 1fr 42vh !important;
+    height: 100dvh;
+  }
+
+  /* Nav — compact horizontal bar */
+  #nav {
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    padding: 0 8px !important;
+    gap: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    height: 48px;
+    overflow: hidden;
+  }
+  #nav-logo { display: none !important; }
+  .nav-sep  { display: none !important; }
+  .nb { width: 48px !important; height: 44px !important; }
+  .nb span  { font-size: 7px !important; }
+
+  /* Viewer fills middle row */
+  #viewer-wrap {
+    grid-row: 2 !important;
+    grid-column: 1 !important;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Topbar — wrap tour controls onto two lines neatly */
+  #viewer-topbar {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+    min-height: auto !important;
+    flex-wrap: wrap !important;
+  }
+  #vt-logo   { font-size: 12px !important; }
+  #vt-name   { font-size: 11px !important; flex-basis: 100% !important; order: 10 !important; }
+  #vt-count  { display: none; }
+  #tour-select    { max-width: 100px !important; font-size: 10px !important; }
+  #btn-new-tour,
+  #btn-delete-tour { font-size: 10px !important; padding: 4px 8px !important; }
+
+  /* Viewer canvas fills remaining space */
+  #viewer, .psv-container { height: 100% !important; }
+
+  /* Panel fills bottom row */
+  #panel {
+    grid-row: 3 !important;
+    grid-column: 1 !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Drop zone compact */
+  #dropzone { padding: 12px 10px !important; margin: 8px !important; }
+  #dropzone p    { font-size: 11px !important; }
+  #dropzone svg  { width: 20px !important; height: 20px !important; }
+}
   /* ===== MOBILE ONLY — does not affect desktop ===== */
 @media (max-width: 768px) {
 
