@@ -121,6 +121,9 @@ html,body{
   flex-wrap:wrap;
 }
 #vt-logo{font-size:14px;font-weight:700;color:var(--accent)}
+#tour-name-inp{background:transparent;border:none;border-bottom:1px solid var(--b2);color:var(--accent);font-size:12px;font-family:var(--mono);font-weight:500;width:110px;outline:none;padding:2px 4px;transition:border-color var(--tr)}
+#tour-name-inp:focus{border-bottom-color:var(--accent)}
+#tour-name-inp:hover{border-bottom-color:var(--b2)}
 #vt-name{font-size:12px;color:var(--t2);font-family:var(--mono);flex:1;min-width:120px}
 #vt-count{font-size:11px;color:var(--t3);font-family:var(--mono)}
 #viewer{flex:1;min-height:0}
@@ -186,140 +189,6 @@ select.btn{appearance:none}
     flex-basis:100%;
     order:10;
   }
-}
-  /* ── Mobile fix patch ── */
-@media (max-width: 700px) {
-
-  /* Full viewport, no overflow */
-  html, body { overflow: hidden; height: 100%; }
-
-  #app {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: 48px 1fr 42vh !important;
-    height: 100dvh;
-  }
-
-  /* Nav — compact horizontal bar */
-  #nav {
-    flex-direction: row !important;
-    justify-content: space-around !important;
-    padding: 0 8px !important;
-    gap: 0 !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--border) !important;
-    height: 48px;
-    overflow: hidden;
-  }
-  #nav-logo { display: none !important; }
-  .nav-sep  { display: none !important; }
-  .nb { width: 48px !important; height: 44px !important; }
-  .nb span  { font-size: 7px !important; }
-
-  /* Viewer fills middle row */
-  #viewer-wrap {
-    grid-row: 2 !important;
-    grid-column: 1 !important;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* Topbar — wrap tour controls onto two lines neatly */
-  #viewer-topbar {
-    padding: 6px 8px !important;
-    gap: 6px !important;
-    min-height: auto !important;
-    flex-wrap: wrap !important;
-  }
-  #vt-logo   { font-size: 12px !important; }
-  #vt-name   { font-size: 11px !important; flex-basis: 100% !important; order: 10 !important; }
-  #vt-count  { display: none; }
-  #tour-select    { max-width: 100px !important; font-size: 10px !important; }
-  #btn-new-tour,
-  #btn-delete-tour { font-size: 10px !important; padding: 4px 8px !important; }
-
-  /* Viewer canvas fills remaining space */
-  #viewer, .psv-container { height: 100% !important; }
-
-  /* Panel fills bottom row */
-  #panel {
-    grid-row: 3 !important;
-    grid-column: 1 !important;
-    border-right: none !important;
-    border-top: 1px solid var(--border) !important;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* Drop zone compact */
-  #dropzone { padding: 12px 10px !important; margin: 8px !important; }
-  #dropzone p    { font-size: 11px !important; }
-  #dropzone svg  { width: 20px !important; height: 20px !important; }
-}
-  /* ===== MOBILE ONLY — does not affect desktop ===== */
-@media (max-width: 768px) {
-
-  /* Sidebar becomes a bottom tab bar */
-  .sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: auto;
-    width: 100%;
-    height: 56px;
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 9999;
-    border-top: 1px solid var(--border);
-    border-right: none;
-  }
-
-  /* Main content doesn't get hidden behind sidebar */
-  .main, #viewer, .panel {
-    margin-left: 0 !important;
-    margin-bottom: 56px !important;
-    width: 100% !important;
-  }
-
-  /* Panels take full screen on mobile */
-  .panel {
-    position: fixed;
-    inset: 0;
-    bottom: 56px;
-    width: 100% !important;
-    border-radius: 0;
-    z-index: 100;
-  }
-
-  /* Viewer fills screen */
-  #viewer {
-    height: calc(100vh - 56px) !important;
-  }
-
-  /* Matrix grid scrollable */
-  .matrix-grid {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Bigger touch targets for buttons */
-  button, .btn, .nav-btn, .tab-btn {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Font size adjustments */
-  body {
-    font-size: 14px;
-  }
-
-  /* Drop zone full width */
-  .drop-zone {
-    width: 100%;
-    padding: 24px 12px;
-  }
-
 }
 </style>
 </head>
@@ -399,21 +268,17 @@ select.btn{appearance:none}
     <div id="viewer-topbar">
       <span id="vt-logo">PanoSphere</span>
 
-      <select id="tour-select" class="btn" style="max-width:180px;">
+      <select id="tour-select" class="btn" style="max-width:120px;">
         <option value="default">default</option>
       </select>
+
+      <input id="tour-name-inp" type="text" placeholder="rename…" title="Click to rename tour">
 
       <button class="btn btn-a" id="btn-new-tour">New Tour</button>
       <button class="btn btn-b" id="btn-delete-tour">Delete Tour</button>
 
       <span id="vt-name">No panorama loaded</span>
       <span id="vt-count"></span>
-      <button class="btn btn-a" id="btn-export" title="Download tour as ZIP">⬇ Export</button>
-
-<label class="btn" style="cursor:pointer" title="Upload a tour ZIP">
-  ⬆ Import
-  <input type="file" id="import-input" accept=".zip" style="display:none">
-</label>
     </div>
 
     <div id="no-viewer">
@@ -512,6 +377,7 @@ async function switchTour(name) {
   updateCount();
   $('vt-name').textContent = 'No panorama loaded';
   $('tour-select').value = currentTour;
+  $('tour-name-inp').value = currentTour;
 }
 
 async function init(){
@@ -984,38 +850,48 @@ $('btn-delete-tour').addEventListener('click', async () => {
   $('tour-select').value = currentTour;
   toast('Tour deleted');
 });
-// ── Export ──
-document.getElementById('btn-export').addEventListener('click', () => {
-  if (!currentTour) return toast('No tour selected', 'err');
-  toast('Preparing download...', 'info');
-  window.location.href = `/api/export/${encodeURIComponent(currentTour)}`;
-});
 
-// ── Import ──
-document.getElementById('import-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// ── Tour Rename ──
+const tourNameInp = $('tour-name-inp');
 
-  toast('Importing tour...', 'info');
-  const fd = new FormData();
-  fd.append('file', file);
-
-  const res  = await fetch('/api/import', { method: 'POST', body: fd });
-  const data = await res.json();
-
-  if (data.ok) {
-    await loadTourList();
-    await switchTour(data.tour_name);
-    document.getElementById('tour-select').value = data.tour_name;
-    toast(`Tour imported as: ${data.tour_name}`, 'ok');
-  } else {
-    toast(data.error || 'Import failed', 'err');
+async function renameTour() {
+  const newName = tourNameInp.value.trim();
+  if (!newName || newName === currentTour) {
+    // Revert input if empty or unchanged
+    tourNameInp.value = currentTour;
+    return;
   }
 
-  // Reset input so same file can be re-imported
-  e.target.value = '';
+  const safeName = newName.replace(/[^a-zA-Z0-9\-_]/g, '_');
+  tourNameInp.value = safeName;
+
+  // Save tour data under new name
+  await fetch(`/api/tour/${encodeURIComponent(safeName)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...tour, name: safeName })
+  });
+
+  // Delete old tour if it wasn't default
+  if (currentTour !== 'default') {
+    await fetch(`/api/tour/${encodeURIComponent(currentTour)}`, { method: 'DELETE' });
+  }
+
+  const oldName = currentTour;
+  currentTour = safeName;
+  tour.name = safeName;
+
+  await loadTourList();
+  $('tour-select').value = safeName;
+  toast(`Renamed "${oldName}" → "${safeName}"`);
+}
+
+tourNameInp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') tourNameInp.blur();
+  if (e.key === 'Escape') { tourNameInp.value = currentTour; tourNameInp.blur(); }
 });
-  
+tourNameInp.addEventListener('blur', renameTour);
+
 init();
 </script>
 </body>
