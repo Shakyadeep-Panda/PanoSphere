@@ -856,6 +856,43 @@ $('btn-delete-tour').addEventListener('click', async () => {
   toast('Tour deleted');
 });
 
+// ── Export ──
+$('btn-export').addEventListener('click', () => {
+  if (!currentTour) return toast('No tour selected', 'err');
+  const nodes = Object.keys(tour.nodes || {});
+  if (!nodes.length) return toast('Tour is empty — nothing to export', 'err');
+  toast('Preparing download...', 'info');
+  window.location.href = `/api/export/${encodeURIComponent(currentTour)}`;
+});
+
+// ── Import ──
+$('import-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  toast('Importing tour...', 'info');
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch('/api/import', { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (data.ok) {
+      await loadTourList();
+      await switchTour(data.tour_name);
+      $('tour-select').value = data.tour_name;
+      toast(`Tour imported as: ${data.tour_name}`, 'ok');
+    } else {
+      toast(data.error || 'Import failed', 'err');
+    }
+  } catch(e) {
+    toast('Import failed — check connection', 'err');
+  }
+
+  e.target.value = '';
+});
+
 // ── Tour Rename ──
 const tourNameInp = $('tour-name-inp');
 
