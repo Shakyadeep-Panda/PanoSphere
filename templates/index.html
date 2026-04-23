@@ -158,37 +158,141 @@ select.btn{appearance:none}
   #panel{position:relative;z-index:15}
   #viewer-wrap{grid-column:2}
 }
+
+/* Gear button hidden on desktop */
+#mobile-gear-btn { display: none; }
+#mobile-drawer   { display: none; }
+
 @media (max-width: 700px){
   #app{
-    grid-template-columns:1fr;
-    grid-template-rows:56px 42vh 1fr;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 48px 1fr 42vh !important;
+    height: 100dvh;
   }
+
+  /* Nav — slim horizontal bar */
   #nav{
-    flex-direction:row;
-    justify-content:center;
-    border-right:none;
-    border-bottom:1px solid var(--border);
-    padding:6px;
+    grid-row: 1; grid-column: 1;
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    padding: 0 4px !important;
+    gap: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    height: 48px; overflow: hidden; z-index: 30;
   }
-  #nav-logo{display:none}
-  .nav-sep{display:none}
-  #panel{
-    border-right:none;
-    border-bottom:1px solid var(--border);
-    min-height:0;
-  }
+  #nav-logo { display: none !important; }
+  .nav-sep  { display: none !important; }
+  .nb { width: 46px !important; height: 44px !important; }
+  .nb span { font-size: 7px !important; }
+
+  /* Viewer — middle row */
   #viewer-wrap{
-    min-height:0;
+    grid-row: 2 !important; grid-column: 1 !important;
+    min-height: 0; overflow: hidden; position: relative;
   }
+
+  /* Topbar — single slim line */
   #viewer-topbar{
-    padding:8px 10px;
-    gap:8px;
+    padding: 0 8px !important;
+    gap: 6px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden;
   }
-  #tour-select{max-width:140px!important}
-  #vt-name{
-    flex-basis:100%;
-    order:10;
+  #vt-logo { font-size: 12px !important; flex-shrink: 0; }
+  #vt-name { font-size: 10px !important; flex: 1 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #vt-count { display: none !important; }
+
+  /* Hide desktop controls from topbar */
+  #tour-select     { display: none !important; }
+  #tour-name-inp   { display: none !important; }
+  #btn-new-tour    { display: none !important; }
+  #btn-delete-tour { display: none !important; }
+  #btn-export      { display: none !important; }
+  label[title="Upload a tour ZIP"] { display: none !important; }
+
+  /* Gear button — only on mobile */
+  #mobile-gear-btn {
+    display: flex !important;
+    align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: var(--r);
+    border: 1px solid var(--b2);
+    background: var(--s2);
+    color: var(--text);
+    cursor: pointer; flex-shrink: 0; font-size: 16px;
   }
+
+  /* Drawer */
+  #mobile-drawer {
+    display: none;
+    position: fixed; inset: 0; z-index: 999;
+  }
+  #mobile-drawer.open { display: block !important; }
+  #mobile-drawer-bg {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+  }
+  #mobile-drawer-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--b2);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 36px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .drawer-title {
+    font-size: 10px; font-family: var(--mono);
+    color: var(--t3); letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 2px;
+  }
+  .drawer-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .drawer-row label {
+    font-size: 11px; color: var(--t2);
+    font-family: var(--mono); min-width: 56px; flex-shrink: 0;
+  }
+  .drawer-row select,
+  .drawer-row input[type=text] {
+    flex: 1; background: var(--s2);
+    border: 1px solid var(--b2); color: var(--text);
+    border-radius: var(--r); padding: 8px 10px;
+    font-size: 12px; font-family: var(--mono); outline: none;
+  }
+  .drawer-btns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .drawer-btns button,
+  .drawer-btns label.drawer-lbl {
+    padding: 11px 8px; font-size: 12px; text-align: center;
+    border-radius: var(--r); border: 1px solid var(--b2);
+    background: var(--s2); color: var(--text);
+    cursor: pointer; font-family: var(--font);
+    display: block; width: 100%;
+  }
+  .drawer-btns .d-btn-a { border-color: var(--accent) !important; color: var(--accent) !important; }
+  .drawer-btns .d-btn-b { border-color: var(--a2) !important; color: var(--a2) !important; }
+
+  /* Viewer canvas */
+  #viewer, .psv-container { height: 100% !important; }
+
+  /* Panel — bottom row */
+  #panel{
+    grid-row: 3 !important; grid-column: 1 !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    border-bottom: none !important;
+    min-height: 0; overflow: hidden;
+  }
+
+  /* Dropzone compact */
+  #dropzone { padding: 12px 10px !important; margin: 8px !important; }
+  #dropzone p   { font-size: 11px !important; }
+  #dropzone svg { width: 20px !important; height: 20px !important; }
 }
 </style>
 </head>
@@ -267,6 +371,8 @@ select.btn{appearance:none}
   <div id="viewer-wrap">
     <div id="viewer-topbar">
       <span id="vt-logo">PanoSphere</span>
+
+      <button id="mobile-gear-btn" title="Tour settings">⚙</button>
 
       <select id="tour-select" class="btn" style="max-width:120px;">
         <option value="default">default</option>
@@ -934,7 +1040,137 @@ tourNameInp.addEventListener('keydown', e => {
 });
 tourNameInp.addEventListener('blur', renameTour);
 
+// ── Mobile Drawer ──
+function openDrawer() {
+  const drawer = $('mobile-drawer');
+  // Sync mobile select with current tours
+  const msel = $('mobile-tour-select');
+  msel.innerHTML = $('tour-select').innerHTML;
+  msel.value = currentTour;
+  $('mobile-tour-name-inp').value = currentTour;
+  drawer.classList.add('open');
+}
+function closeDrawer() {
+  $('mobile-drawer').classList.remove('open');
+}
+
+$('mobile-gear-btn').addEventListener('click', openDrawer);
+$('mobile-drawer-bg').addEventListener('click', closeDrawer);
+
+$('mobile-tour-select').addEventListener('change', async (e) => {
+  await switchTour(e.target.value);
+  toast(`Loaded: ${e.target.value}`);
+  closeDrawer();
+});
+
+$('mobile-btn-new-tour').addEventListener('click', async () => {
+  const name = prompt('Enter new tour name:');
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  await fetch(`/api/tour/${encodeURIComponent(n)}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ nodes: {}, matrix: {}, name: n })
+  });
+  await loadTourList();
+  await switchTour(n);
+  toast(`Created: ${n}`);
+  closeDrawer();
+});
+
+$('mobile-btn-delete-tour').addEventListener('click', async () => {
+  if (currentTour === 'default') { toast('Cannot delete default', 'err'); return; }
+  if (!confirm(`Delete "${currentTour}"?`)) return;
+  await fetch(`/api/tour/${encodeURIComponent(currentTour)}`, { method: 'DELETE' });
+  currentTour = 'default';
+  await loadTourList();
+  await switchTour('default');
+  toast('Tour deleted');
+  closeDrawer();
+});
+
+$('mobile-btn-export').addEventListener('click', () => {
+  if (!Object.keys(tour.nodes||{}).length) { toast('Tour is empty', 'err'); return; }
+  toast('Preparing download...', 'info');
+  window.location.href = `/api/export/${encodeURIComponent(currentTour)}`;
+  closeDrawer();
+});
+
+$('mobile-import-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  toast('Importing...', 'info');
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/import', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      await loadTourList();
+      await switchTour(data.tour_name);
+      toast(`Imported: ${data.tour_name}`, 'ok');
+    } else {
+      toast(data.error || 'Import failed', 'err');
+    }
+  } catch(err) {
+    toast('Import failed', 'err');
+  }
+  e.target.value = '';
+  closeDrawer();
+});
+
+// Mobile rename on blur/enter
+const mobileNameInp = $('mobile-tour-name-inp');
+async function renameTourMobile() {
+  const newName = mobileNameInp.value.trim().replace(/[^a-zA-Z0-9\-_]/g, '_');
+  if (!newName || newName === currentTour) { mobileNameInp.value = currentTour; return; }
+  await fetch(`/api/tour/${encodeURIComponent(newName)}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ...tour, name: newName })
+  });
+  if (currentTour !== 'default') {
+    await fetch(`/api/tour/${encodeURIComponent(currentTour)}`, { method: 'DELETE' });
+  }
+  currentTour = newName;
+  tour.name = newName;
+  await loadTourList();
+  $('tour-select').value = newName;
+  $('tour-name-inp').value = newName;
+  toast(`Renamed to: ${newName}`);
+}
+mobileNameInp.addEventListener('keydown', e => { if(e.key==='Enter') mobileNameInp.blur(); });
+mobileNameInp.addEventListener('blur', renameTourMobile);
+
 init();
 </script>
+<!-- ── Mobile Tour Drawer ── -->
+<div id="mobile-drawer">
+  <div id="mobile-drawer-bg"></div>
+  <div id="mobile-drawer-sheet">
+    <div class="drawer-title">Tour Settings</div>
+
+    <div class="drawer-row">
+      <label>Select</label>
+      <select id="mobile-tour-select"></select>
+    </div>
+
+    <div class="drawer-row">
+      <label>Rename</label>
+      <input type="text" id="mobile-tour-name-inp" placeholder="new name…">
+    </div>
+
+    <div class="drawer-btns">
+      <button id="mobile-btn-new-tour" class="d-btn-a">＋ New Tour</button>
+      <button id="mobile-btn-delete-tour" class="d-btn-b">✕ Delete Tour</button>
+      <button id="mobile-btn-export" class="d-btn-a">⬇ Export ZIP</button>
+      <label class="drawer-lbl d-btn-a">
+        ⬆ Import ZIP
+        <input type="file" id="mobile-import-input" accept=".zip" style="display:none">
+      </label>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
