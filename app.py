@@ -3,7 +3,7 @@ import json
 import uuid
 import zipfile
 import io
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, send_file
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,85 +97,6 @@ def list_tours():
 # -----------------------------
 # Routes
 # -----------------------------
-# ── Export tour as ZIP ──
-@app.route('/api/export/<tour_name>', methods=['GET'])
-def export_tour(tour_name):
-    tour = load_tour(tour_name)
-
-    if not tour['nodes']:
-        return jsonify({'error': 'Tour is empty'}), 400
-
-    zip_buffer = io.BytesIO()
-
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # Add tour.json
-        zf.writestr('tour.json', json.dumps(tour, indent=2))
-
-        # Add each image
-        for node in tour['nodes'].values():
-            fname = node.get('filename')
-            if fname:
-                fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-                if os.path.exists(fpath):
-                    zf.write(fpath, f"images/{fname}")
-
-    zip_buffer.seek(0)
-    safe_name = safe_tour_name(tour_name)
-
-    from flask import send_file
-    return send_file(
-        zip_buffer,
-        mimetype='application/zip',
-        as_attachment=True,
-        download_name=f"{safe_name}_tour.zip"
-    )
-
-
-# ── Import tour from ZIP ──
-@app.route('/api/import', methods=['POST'])
-def import_tour():
-    ensure_dirs()
-
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file'}), 400
-
-    file = request.files['file']
-
-    if not file.filename.endswith('.zip'):
-        return jsonify({'error': 'Must be a .zip file'}), 400
-
-    try:
-        zip_buffer = io.BytesIO(file.read())
-
-        with zipfile.ZipFile(zip_buffer, 'r') as zf:
-            # Check tour.json exists
-            if 'tour.json' not in zf.namelist():
-                return jsonify({'error': 'Invalid tour ZIP — missing tour.json'}), 400
-
-            # Read tour data
-            tour = json.loads(zf.read('tour.json').decode('utf-8'))
-
-            # Generate a new unique tour name to avoid conflicts
-            import_name = f"import_{str(uuid.uuid4())[:6]}"
-            tour['name'] = import_name
-
-            # Extract images
-            for name in zf.namelist():
-                if name.startswith('images/') and name != 'images/':
-                    fname = os.path.basename(name)
-                    if fname:
-                        img_data = zf.read(name)
-                        fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-                        with open(fpath, 'wb') as f:
-                            f.write(img_data)
-
-            save_tour(tour, import_name)
-
-        return jsonify({'ok': True, 'tour_name': import_name})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
@@ -347,6 +268,76 @@ def save_matrix(tour_name):
     return jsonify({'ok': True, 'tour': tour})
 
 
+@app.route('/api/export/<tour_name>', methods=['GET'])
+def export_tour(tour_name):
+    tour = load_tour(tour_name)
+
+    if not tour['nodes']:
+        return jsonify({'error': 'Tour is empty'}), 400
+
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr('tour.json', json.dumps(tour, indent=2))
+
+        for node in tour['nodes'].values():
+            fname = node.get('filename')
+            if fname:
+                fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                if os.path.exists(fpath):
+                    zf.write(fpath, f"images/{fname}")
+
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f"{safe_tour_name(tour_name)}_tour.zip"
+    )
+
+
+@app.route('/api/import', methods=['POST'])
+def import_tour():
+    ensure_dirs()
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file'}), 400
+
+    file = request.files['file']
+
+    if not file.filename.endswith('.zip'):
+        return jsonify({'error': 'Must be a .zip file'}), 400
+
+    try:
+        zip_buffer = io.BytesIO(file.read())
+
+        with zipfile.ZipFile(zip_buffer, 'r') as zf:
+            if 'tour.json' not in zf.namelist():
+                return jsonify({'error': 'Invalid tour ZIP — missing tour.json'}), 400
+
+            tour = json.loads(zf.read('tour.json').decode('utf-8'))
+
+            import_name = f"import_{str(uuid.uuid4())[:6]}"
+            tour['name'] = import_name
+
+            for name in zf.namelist():
+                if name.startswith('images/') and name != 'images/':
+                    fname = os.path.basename(name)
+                    if fname:
+                        img_data = zf.read(name)
+                        fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                        with open(fpath, 'wb') as f:
+                            f.write(img_data)
+
+            save_tour(tour, import_name)
+
+        return jsonify({'ok': True, 'tour_name': import_name})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -357,307 +348,10 @@ def uploaded_file(filename):
 # -----------------------------
 if __name__ == '__main__':
     ensure_dirs()
-    list_tours()  # ensures default exists
+    list_tours()
 
     print(f"\n  Upload folder: {app.config['UPLOAD_FOLDER']}")
     print(f"  Tours folder:  {app.config['TOURS_FOLDER']}")
-    print(f"  Open: http://localhost:5000\n")
-
-    app.run(debug=True, port=5000, use_reloader=False)import os
-import json
-import uuid
-
-from flask import Flask, render_template, request, jsonify, send_from_directory
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-app = Flask(__name__, template_folder='templates', static_folder='static')
-app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
-app.config['TOURS_FOLDER']  = os.path.join(BASE_DIR, 'tours')
-ALLOWED = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
-
-
-# -----------------------------
-# Helpers
-# -----------------------------
-def allowed(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED
-
-
-def safe_tour_name(name):
-    safe_name = "".join(c for c in name if c.isalnum() or c in ('-', '_')).strip()
-    return safe_name if safe_name else "default"
-
-
-def get_tour_file(name):
-    return os.path.join(app.config['TOURS_FOLDER'], f"{safe_tour_name(name)}.json")
-
-
-def ensure_dirs():
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['TOURS_FOLDER'], exist_ok=True)
-
-
-def default_tour(name="default"):
-    return {
-        'nodes': {},
-        'matrix': {},
-        'name': safe_tour_name(name)
-    }
-
-
-def load_tour(name="default"):
-    ensure_dirs()
-    file_path = get_tour_file(name)
-
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                if not isinstance(data, dict):
-                    return default_tour(name)
-                data.setdefault('nodes', {})
-                data.setdefault('matrix', {})
-                data.setdefault('name', safe_tour_name(name))
-                return data
-        except Exception:
-            return default_tour(name)
-
-    return default_tour(name)
-
-
-def save_tour(data, name="default"):
-    ensure_dirs()
-    file_path = get_tour_file(name)
-
-    if not isinstance(data, dict):
-        data = default_tour(name)
-
-    data.setdefault('nodes', {})
-    data.setdefault('matrix', {})
-    data['name'] = safe_tour_name(name)
-
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
-
-
-def list_tours():
-    ensure_dirs()
-    tours = []
-
-    for file in os.listdir(app.config['TOURS_FOLDER']):
-        if file.endswith('.json'):
-            tours.append(file[:-5])
-
-    if 'default' not in tours:
-        save_tour(default_tour("default"), "default")
-        tours.append('default')
-
-    return sorted(set(tours))
-
-
-# -----------------------------
-# Routes
-# -----------------------------
-@app.route('/favicon.ico')
-def favicon():
-    return '', 204
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
-@app.route('/api/tours', methods=['GET'])
-def get_tours():
-    return jsonify({'tours': list_tours()})
-
-
-@app.route('/api/tour/<tour_name>', methods=['GET'])
-def get_tour_api(tour_name):
-    return jsonify(load_tour(tour_name))
-
-
-@app.route('/api/tour/<tour_name>', methods=['POST'])
-def save_tour_api(tour_name):
-    existing = load_tour(tour_name)
-    incoming = request.get_json(silent=True) or {}
-
-    if not isinstance(incoming, dict):
-        incoming = {}
-
-    existing.update(incoming)
-    save_tour(existing, tour_name)
-    return jsonify({'ok': True, 'tour': existing})
-
-
-@app.route('/api/nodes/<tour_name>/<node_id>', methods=['DELETE'])
-def delete_node(tour_name, node_id):
-    tour = load_tour(tour_name)
-
-    if node_id in tour['nodes']:
-        fname = tour['nodes'][node_id].get('filename')
-        if fname:
-            fp = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-            if os.path.exists(fp):
-                os.remove(fp)
-
-        del tour['nodes'][node_id]
-
-        # Remove from matrix
-        tour['matrix'] = {k: v for k, v in tour.get('matrix', {}).items() if v != node_id}
-
-        # Remove links pointing to deleted node
-        for n in tour['nodes'].values():
-            n['links'] = [l for l in n.get('links', []) if l.get('nodeId') != node_id]
-
-        save_tour(tour, tour_name)
-
-    return jsonify({'ok': True})
-
-
-@app.route('/api/upload/<tour_name>', methods=['POST'])
-def upload(tour_name):
-    ensure_dirs()
-
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files'}), 400
-
-    files = request.files.getlist('files')
-    uploaded = []
-    tour = load_tour(tour_name)
-
-    for file in files:
-        if file and file.filename and allowed(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
-            node_id = str(uuid.uuid4())[:8]
-            filename = f"{node_id}.{ext}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-            file.save(filepath)
-
-            node = {
-                'id': node_id,
-                'name': os.path.splitext(file.filename)[0],
-                'filename': filename,
-                'links': []
-            }
-
-            tour['nodes'][node_id] = node
-            uploaded.append(node)
-
-    save_tour(tour, tour_name)
-    return jsonify({'uploaded': uploaded})
-
-
-@app.route('/api/nodes/<tour_name>/<node_id>', methods=['PUT'])
-def update_node(tour_name, node_id):
-    tour = load_tour(tour_name)
-
-    if node_id not in tour['nodes']:
-        return jsonify({'error': 'Not found'}), 404
-
-    incoming = request.get_json(silent=True) or {}
-    if not isinstance(incoming, dict):
-        incoming = {}
-
-    tour['nodes'][node_id].update(incoming)
-    save_tour(tour, tour_name)
-
-    return jsonify(tour['nodes'][node_id])
-
-
-@app.route('/api/nodes/<tour_name>/<node_id>', methods=['DELETE'])
-def delete_node(tour_name, node_id):
-    tour = load_tour(tour_name)
-
-    if node_id in tour['nodes']:
-        fname = tour['nodes'][node_id].get('filename')
-
-        # Delete from Cloudinary if it's a cloudinary URL
-        if fname and 'cloudinary.com' in fname:
-            public_id = f"panosphere/{tour_name}/{node_id}"
-            cloudinary.uploader.destroy(public_id)
-        # Delete from local disk (fallback for old uploads)
-        elif fname:
-            fp = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-            if os.path.exists(fp):
-                os.remove(fp)
-
-        del tour['nodes'][node_id]
-
-        # Remove from matrix
-        tour['matrix'] = {k: v for k, v in tour.get('matrix', {}).items() if v != node_id}
-
-        # Remove links pointing to deleted node
-        for n in tour['nodes'].values():
-            n['links'] = [l for l in n.get('links', []) if l.get('nodeId') != node_id]
-
-        save_tour(tour, tour_name)
-
-    return jsonify({'ok': True})
-
-@app.route('/api/matrix/<tour_name>', methods=['POST'])
-def save_matrix(tour_name):
-    tour = load_tour(tour_name)
-    incoming = request.get_json(silent=True) or {}
-    matrix = incoming.get('matrix', {})
-
-    if not isinstance(matrix, dict):
-        matrix = {}
-
-    tour['matrix'] = matrix
-    nodes = tour['nodes']
-    pos = {}
-
-    for key, nid in matrix.items():
-        if nid and nid in nodes:
-            try:
-                r, c = map(int, key.split(','))
-                pos[nid] = (r, c)
-            except:
-                continue
-
-    dirs = {'north': (-1, 0), 'south': (1, 0), 'east': (0, 1), 'west': (0, -1)}
-    yaws = {'north': '0deg', 'south': '180deg', 'east': '90deg', 'west': '-90deg'}
-
-    for nid, (r, c) in pos.items():
-        auto = []
-
-        for d, (dr, dc) in dirs.items():
-            nk = f'{r+dr},{c+dc}'
-            nb = matrix.get(nk)
-
-            if nb and nb in nodes:
-                auto.append({
-                    'nodeId': nb,
-                    'position': {'yaw': yaws[d], 'pitch': '-10deg'},
-                    'name': nodes[nb]['name'],
-                    'auto': True
-                })
-
-        existing = [l for l in nodes[nid].get('links', []) if not l.get('auto')]
-        nodes[nid]['links'] = existing + auto
-
-    save_tour(tour, tour_name)
-    return jsonify({'ok': True, 'tour': tour})
-
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# -----------------------------
-# Start
-# -----------------------------
-if __name__ == '__main__':
-    ensure_dirs()
-    list_tours()  # ensures default exists
-
-    print(f"\n  Upload folder: {app.config['UPLOAD_FOLDER']}")
-    print(f"  Tours folder: {app.config['TOURS_FOLDER']}")
     print(f"  Open: http://localhost:5000\n")
 
     app.run(debug=True, port=5000, use_reloader=False)
