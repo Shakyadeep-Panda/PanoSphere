@@ -1,6 +1,8 @@
 import os
 import json
 import uuid
+import zipfile
+import io
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -95,6 +97,85 @@ def list_tours():
 # -----------------------------
 # Routes
 # -----------------------------
+# ── Export tour as ZIP ──
+@app.route('/api/export/<tour_name>', methods=['GET'])
+def export_tour(tour_name):
+    tour = load_tour(tour_name)
+
+    if not tour['nodes']:
+        return jsonify({'error': 'Tour is empty'}), 400
+
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Add tour.json
+        zf.writestr('tour.json', json.dumps(tour, indent=2))
+
+        # Add each image
+        for node in tour['nodes'].values():
+            fname = node.get('filename')
+            if fname:
+                fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                if os.path.exists(fpath):
+                    zf.write(fpath, f"images/{fname}")
+
+    zip_buffer.seek(0)
+    safe_name = safe_tour_name(tour_name)
+
+    from flask import send_file
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f"{safe_name}_tour.zip"
+    )
+
+
+# ── Import tour from ZIP ──
+@app.route('/api/import', methods=['POST'])
+def import_tour():
+    ensure_dirs()
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file'}), 400
+
+    file = request.files['file']
+
+    if not file.filename.endswith('.zip'):
+        return jsonify({'error': 'Must be a .zip file'}), 400
+
+    try:
+        zip_buffer = io.BytesIO(file.read())
+
+        with zipfile.ZipFile(zip_buffer, 'r') as zf:
+            # Check tour.json exists
+            if 'tour.json' not in zf.namelist():
+                return jsonify({'error': 'Invalid tour ZIP — missing tour.json'}), 400
+
+            # Read tour data
+            tour = json.loads(zf.read('tour.json').decode('utf-8'))
+
+            # Generate a new unique tour name to avoid conflicts
+            import_name = f"import_{str(uuid.uuid4())[:6]}"
+            tour['name'] = import_name
+
+            # Extract images
+            for name in zf.namelist():
+                if name.startswith('images/') and name != 'images/':
+                    fname = os.path.basename(name)
+                    if fname:
+                        img_data = zf.read(name)
+                        fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                        with open(fpath, 'wb') as f:
+                            f.write(img_data)
+
+            save_tour(tour, import_name)
+
+        return jsonify({'ok': True, 'tour_name': import_name})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
