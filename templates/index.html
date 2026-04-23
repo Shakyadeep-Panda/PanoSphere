@@ -408,6 +408,12 @@ select.btn{appearance:none}
 
       <span id="vt-name">No panorama loaded</span>
       <span id="vt-count"></span>
+      <button class="btn btn-a" id="btn-export" title="Download tour as ZIP">⬇ Export</button>
+
+<label class="btn" style="cursor:pointer" title="Upload a tour ZIP">
+  ⬆ Import
+  <input type="file" id="import-input" accept=".zip" style="display:none">
+</label>
     </div>
 
     <div id="no-viewer">
@@ -978,7 +984,38 @@ $('btn-delete-tour').addEventListener('click', async () => {
   $('tour-select').value = currentTour;
   toast('Tour deleted');
 });
+// ── Export ──
+document.getElementById('btn-export').addEventListener('click', () => {
+  if (!currentTour) return toast('No tour selected', 'err');
+  toast('Preparing download...', 'info');
+  window.location.href = `/api/export/${encodeURIComponent(currentTour)}`;
+});
 
+// ── Import ──
+document.getElementById('import-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  toast('Importing tour...', 'info');
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const res  = await fetch('/api/import', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  if (data.ok) {
+    await loadTourList();
+    await switchTour(data.tour_name);
+    document.getElementById('tour-select').value = data.tour_name;
+    toast(`Tour imported as: ${data.tour_name}`, 'ok');
+  } else {
+    toast(data.error || 'Import failed', 'err');
+  }
+
+  // Reset input so same file can be re-imported
+  e.target.value = '';
+});
+  
 init();
 </script>
 </body>
